@@ -24,40 +24,45 @@
 
 static unsigned char buffer[MAX_NOUT_SIZE];
 
-typedef struct
+typedef struct CanMsg
 {
-    uint16_t ID;
-    uint8_t len;
-    uint8_t data[8];
-    uint8_t type; //stdFrame + dataFrame
+	CanMsg()
+	{
+		len = 8;
+		type = 0x03; //stdFrame
+	}
+	uint16_t ID;
+	uint8_t len;
+	uint8_t data[8];
+	uint8_t type; 
 }CanMsg_t;
 
 PACK(
 struct stdCanMsgPkg_t {
-    uint8_t header1; //66
-    uint8_t header2; //cc
-    uint16_t pkg_len;
-    uint8_t pkg_cmd; //B1 stdCanMsg
-    uint8_t type; //frame type
-    uint32_t frame_id;
-    uint8_t frame_len;
-    uint8_t data[8];
-    uint8_t checknum;
+	uint8_t header1; //66
+	uint8_t header2; //cc
+	uint16_t pkg_len;
+	uint8_t pkg_cmd; //B1 stdCanMsg
+	uint8_t type; //frame type
+	uint32_t frame_id;
+	uint8_t frame_len;
+	uint8_t data[8];
+	uint8_t checknum;
 });
 
 PACK(
 struct inquireFilterResponsePkg_t {
-    uint8_t header1; //66
-    uint8_t header2; //cc
-    uint16_t pkg_len;
-    uint8_t pkg_cmd; //9D inquire Filter Response 
-    uint8_t result;
-    uint8_t portNum;
-    uint8_t filterNum;
-    uint32_t filterID;
-    uint32_t filterMask;
-    uint8_t filterMode;
-    uint8_t checknum;
+	uint8_t header1; //66
+	uint8_t header2; //cc
+	uint16_t pkg_len;
+	uint8_t pkg_cmd; //9D inquire Filter Response 
+	uint8_t result;
+	uint8_t portNum;
+	uint8_t filterNum;
+	uint32_t filterID;
+	uint32_t filterMask;
+	uint8_t filterMode;
+	uint8_t checknum;
 });
 
 
@@ -147,20 +152,20 @@ private:
 	};
 	
 	enum BaudRateCofigStatus_t
-    {
-        BaudRateCofig_Ok=0x00,
-        BaudrateCofig_Err1=0x01,
-        BaudrateCofig_Err2=0x02,
-        BaudrateCofig_Err3=0x03,
-        BaudrateCofig_Err4=0x04,
-        BaudrateCofig_None =0x05
-    };
-    
-    BaudRateCofigStatus_t baudRateCofigStatus_;
-    int currentBaudrate_;
-    
-    bool filterSetStatus_[14];
-    bool filterClearStatus_;
+	{
+		BaudRateCofig_Ok=0x00,
+		BaudrateCofig_Err1=0x01,
+		BaudrateCofig_Err2=0x02,
+		BaudrateCofig_Err3=0x03,
+		BaudrateCofig_Err4=0x04,
+		BaudrateCofig_None =0x05
+	};
+	
+	BaudRateCofigStatus_t baudRateCofigStatus_;
+	int currentBaudrate_;
+	
+	bool filterSetStatus_[14];
+	bool filterClearStatus_;
 
 };
 
