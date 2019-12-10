@@ -510,7 +510,13 @@ void Can2serial::inquireFilter(uint8_t filterNum ,uint8_t port)
 	usleep(10000);
 }
 
-
+void Can2serial::showCanMsg(const CanMsg_t& msg)
+{
+	printf("ID:0x%02x ",msg.ID);
+	for(size_t i=0; i<msg.len; ++i)
+		printf("%02x  ",msg.data[i]);
+	printf("\n");
+}
 
 
 

@@ -102,11 +102,11 @@ public:
 		EXT_REMOTE_FRAME = 0x00,
 		EXT_DATA_FRAME = 0x02 
 	};
-	
+
+public:
+	void showCanMsg(const CanMsg_t& msg);
 	
 private:
-
-
 	void ReadSerialPort() ;
 
 	void BufferIncomingData(unsigned char *message, unsigned int length);
