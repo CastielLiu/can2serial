@@ -135,7 +135,8 @@ private:
 	size_t writeIndex_;
 	size_t readIndex_;
 	
-	boost::mutex mutex_;
+	boost::mutex wr_mutex_;
+	boost::mutex send_mutex_;
 	
 	const inquireFilterResponsePkg_t * const inquire_filter_response_ptr_;
 	

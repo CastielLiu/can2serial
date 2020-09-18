@@ -221,7 +221,7 @@ void Can2serial::parse(uint8_t * message,uint16_t length)
                 
                 
                 {	
-                	boost::mutex::scoped_lock lock(mutex_);
+                	boost::mutex::scoped_lock lock(wr_mutex_);
 		            canMsgBuf_[writeIndex_] = canMsg_;
 		            canMsgStatus[writeIndex_] = true;
 		        }
@@ -309,8 +309,8 @@ bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 
 	try
 	{
+		boost::mutex::scoped_lock lock(send_mutex_);
 		serial_port_->write(sendBuf,bufLen);
-		delete [] sendBuf;
 	}
     	
 	catch (std::exception &e) 
@@ -318,8 +318,10 @@ bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 		std::stringstream output;
 		output << "Error changing baud rate: " << e.what();
 		std::cout << output.str() <<std::endl;
+		delete [] sendBuf;
 		return false;
 	}
+	delete [] sendBuf;
 	return true;
 }
 
@@ -482,7 +484,7 @@ bool Can2serial::getCanMsg(CanMsg_t &msg)
 	if(canMsgStatus[readIndex_]==false || readIndex_==writeIndex_)
 		return false;
 	{	
-		boost::mutex::scoped_lock lock(mutex_);
+		boost::mutex::scoped_lock lock(wr_mutex_);
 		msg = canMsgBuf_[readIndex_];
 		canMsgStatus[readIndex_]=false;
 	}
