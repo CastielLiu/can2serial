@@ -40,7 +40,6 @@ bool Can2serial::configure_port(std::string port,int baud_rate)
 {
 	try 
 	{
-	
 		serial_port_ = new serial::Serial(port,baud_rate,serial::Timeout::simpleTimeout(10)); 
 
 		if (!serial_port_->isOpen())
@@ -78,7 +77,7 @@ void Can2serial::StartReading()
 	if (reading_status_)
 		return;
 		
-	//serial_port_->flush();
+	serial_port_->flushInput();
 	// create thread to read from sensor
 	reading_status_=true;
 	read_thread_ptr_ = boost::shared_ptr<boost::thread >(new boost::thread(boost::bind(&Can2serial::ReadSerialPort, this)));
@@ -512,8 +511,11 @@ void Can2serial::inquireFilter(uint8_t filterNum ,uint8_t port)
 	usleep(10000);
 }
 
-void Can2serial::showCanMsg(const CanMsg_t& msg)
+void Can2serial::showCanMsg(const CanMsg_t& msg, const std::string& prefix)
 {
+	if(!prefix.empty())
+		printf("%s\t", prefix.c_str());
+		
 	printf("ID:0x%02x ",msg.ID);
 	for(size_t i=0; i<msg.len; ++i)
 		printf("%02x  ",msg.data[i]);

@@ -104,7 +104,7 @@ public:
 	};
 
 public:
-	void showCanMsg(const CanMsg_t& msg);
+	void showCanMsg(const CanMsg_t& msg, const std::string& prefix="");
 	
 private:
 	void ReadSerialPort() ;

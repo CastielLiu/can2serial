@@ -3,11 +3,11 @@ project(can2serial)
 
 # Find catkin
 find_package(catkin REQUIRED COMPONENTS 
+	roscpp
 	serial
 )
 
 include_directories(${serial_INCLUDE_DIRS})
-
 
 catkin_package(
 	LIBRARIES ${PROJECT_NAME}
@@ -38,4 +38,9 @@ install(TARGETS ${PROJECT_NAME}
 ## Install headers
 install(FILES include/can2serial.h
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/can2serial)
+  
+## example
+add_executable(${PROJECT_NAME}_example example/example.cpp)
+add_dependencies(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(${PROJECT_NAME}_example ${PROJECT_NAME} ${catkin_LIBRARIES})
 
