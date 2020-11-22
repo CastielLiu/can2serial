@@ -86,12 +86,15 @@ void Can2serial::StartReading()
 void Can2serial::StopReading() 
 {
 	reading_status_=false;
+	recv_thread_mutex_.lock();//等待读取线程退出，此处才能获得锁
+	
+	recv_thread_mutex_.unlock();
 }
  
 void Can2serial::ReadSerialPort() 
 {
 	size_t len;
-
+	recv_thread_mutex_.lock();
 	// continuously read data from serial port
 	while (reading_status_) 
 	{
@@ -123,6 +126,7 @@ void Can2serial::ReadSerialPort()
 		*/
 	}
 	
+	recv_thread_mutex_.unlock();
 }
 
 
