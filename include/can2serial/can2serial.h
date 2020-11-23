@@ -5,10 +5,10 @@
 #include <boost/bind.hpp>
 #include "serial/serial.h"
 #include <vector>
-#include<iostream>
-#include<string>
-
-#include <arpa/inet.h> 
+#include <iostream>
+#include <string>
+#include <mutex>
+#include <arpa/inet.h>
 
 
 #define MAX_NOUT_SIZE  2000  //read from serial per time
@@ -95,6 +95,8 @@ public:
 	
 	void inquireFilter(uint8_t filterNum ,uint8_t port=0x01);
 	
+	bool isRunning() {return reading_status_ && !serial_is_bad_;}
+	
 	enum
 	{
 		STD_DATA_FRAME = 0x03,
@@ -120,6 +122,7 @@ private:
 	serial::Serial *serial_port_;
 	boost::shared_ptr<boost::thread> read_thread_ptr_;
 	bool reading_status_;
+	bool serial_is_bad_;
 	
 	uint8_t data_buffer_[MAX_PKG_BUF_LEN]; //最大包长为20
 	size_t buffer_index_;
@@ -137,6 +140,8 @@ private:
 	
 	boost::mutex wr_mutex_;
 	boost::mutex send_mutex_;
+	
+	std::mutex recv_thread_mutex_;
 	
 	const inquireFilterResponsePkg_t * const inquire_filter_response_ptr_;
 	

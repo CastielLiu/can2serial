@@ -11,7 +11,8 @@ static void printf_buf(const unsigned char *buf,int len)
 }
 
 Can2serial::Can2serial() :
-	inquire_filter_response_ptr_((inquireFilterResponsePkg_t *)data_buffer_)
+	inquire_filter_response_ptr_((inquireFilterResponsePkg_t *)data_buffer_),
+	serial_is_bad_(false)
 {
 	serial_port_=NULL;
 	reading_status_=false;
@@ -38,8 +39,13 @@ Can2serial::~Can2serial()
 
 bool Can2serial::configure_port(std::string port,int baud_rate)
 {
+	std::unique_lock<std::mutex> lock_recv(recv_thread_mutex_); 
+	boost::mutex::scoped_lock lock_send(send_mutex_);
+	
 	try 
 	{
+		if(serial_port_ != NULL)
+			delete serial_port_;
 		serial_port_ = new serial::Serial(port,baud_rate,serial::Timeout::simpleTimeout(10)); 
 
 		if (!serial_port_->isOpen())
@@ -58,7 +64,6 @@ bool Can2serial::configure_port(std::string port,int baud_rate)
 		}
 
 		serial_port_->flush();
-		
 	} 
 	catch (std::exception &e) 
 	{
@@ -109,6 +114,10 @@ void Can2serial::ReadSerialPort()
 	        std::stringstream output;
 	        output << "Error reading from serial port: " << e.what();
 	        std::cout << output.str() <<std::endl;
+	        
+	        reading_status_ = false;
+	        serial_is_bad_ = true;
+	        break ;
     	}
     	if(len==0) continue;
     	
@@ -129,8 +138,6 @@ void Can2serial::ReadSerialPort()
 	recv_thread_mutex_.unlock();
 }
 
-
-		 
           
 void Can2serial::BufferIncomingData(unsigned char *message, unsigned int length)
 {
@@ -282,6 +289,9 @@ uint8_t Can2serial::generateCheckNum(const uint8_t* ptr,size_t len)
 
 bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 {
+	if(serial_is_bad_)
+		return false;
+		
 	uint16_t bufLen = 12 + can_msg.len;
 	
 	uint8_t *sendBuf = new uint8_t[bufLen];
@@ -322,13 +332,13 @@ bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 		output << "Error changing baud rate: " << e.what();
 		std::cout << output.str() <<std::endl;
 		delete [] sendBuf;
+		
+		serial_is_bad_ = true;
 		return false;
 	}
 	delete [] sendBuf;
 	return true;
 }
-
-
 
 void Can2serial::sendCmd(uint8_t cmdId,const uint8_t *buf,uint8_t count)
 {
