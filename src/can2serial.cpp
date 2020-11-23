@@ -39,8 +39,9 @@ Can2serial::~Can2serial()
 
 bool Can2serial::configure_port(std::string port,int baud_rate)
 {
-	std::unique_lock<std::mutex> lock_recv(recv_thread_mutex_); 
-	boost::mutex::scoped_lock lock_send(send_mutex_);
+	reading_status_ = false;   //停止接收
+	std::unique_lock<std::mutex> lock_recv(recv_thread_mutex_);  //等待接收线程退出并获得锁
+	boost::mutex::scoped_lock lock_send(send_mutex_);   //锁定发送，防止正在发送时删除指针
 	
 	try 
 	{
@@ -56,7 +57,7 @@ bool Can2serial::configure_port(std::string port,int baud_rate)
 			serial_port_ = NULL;
 			return false;
 		} 
-		else 
+		else
 		{
 	        std::stringstream output;
 	        output << "Serial port: " << port << " opened successfully." << std::endl;
@@ -70,12 +71,12 @@ bool Can2serial::configure_port(std::string port,int baud_rate)
 	    std::stringstream output;
 	    output << "Error  " << port << ": " << e.what();
 	    std::cout << output.str() <<std::endl;
+		serial_is_bad_ = true;
 	    return false;
 	}
-
+	serial_is_bad_ = false;
 	return true;
 }
-
 
 void Can2serial::StartReading() 
 {
@@ -107,8 +108,11 @@ void Can2serial::ReadSerialPort()
 		try 
 		{
 			// read data
-			len = serial_port_->read(buffer, MAX_NOUT_SIZE);
-		} 
+			if(serial_port_)
+				len = serial_port_->read(buffer, MAX_NOUT_SIZE);
+			else
+				len = 0;
+		}
 		catch (std::exception &e) 
 		{
 	        std::stringstream output;
@@ -121,12 +125,10 @@ void Can2serial::ReadSerialPort()
     	}
     	if(len==0) continue;
     	
-    	
 		// add data to the buffer to be parsed
 		
 		//ROS_INFO("read length :%d\r\n",len);
 		BufferIncomingData(buffer, len);
-		
 		
 	//	std::cout << std::dec<< "length:" <<len <<std::endl;
 		/*for(size_t i=0;i<len;i++)
@@ -195,11 +197,8 @@ void Can2serial::BufferIncomingData(unsigned char *message, unsigned int length)
 				 //std::cout << "package_len_...:" <<package_len_ << std::endl;
 					parse(data_buffer_,package_len_+4);
 					buffer_index_ = 0;
-					
 				}
 				break;
-			
-		
 		}
 	}	// end for
 }
@@ -217,30 +216,28 @@ void Can2serial::parse(uint8_t * message,uint16_t length)
 	switch(cmd)
 	{
 		case CanMsgCmd:
-            	
-            	//if(0==(data_buffer_[12] >>5)) break;                           //data[1] esr_radar object status
-            																//just used in esr_radar to filter invalid objects
-            	canMsg_.type = data_buffer_[5];
-                canMsg_.ID = (data_buffer_[6]<<24)+(data_buffer_[7]<<16)+(data_buffer_[8]<<8)+(data_buffer_[9]);
-                canMsg_.len = data_buffer_[10];
-                
-                //for(size_t i=0;i<canMsg_.len;i++)
-                //	canMsg_.data[i] = data_buffer_[11+i];
-                
-                memcpy(canMsg_.data,data_buffer_+11,canMsg_.len);
-                
-                
-                {	
-                	boost::mutex::scoped_lock lock(wr_mutex_);
-		            canMsgBuf_[writeIndex_] = canMsg_;
-		            canMsgStatus[writeIndex_] = true;
-		        }
-                writeIndex_++;
-                if(writeIndex_==MAX_MSG_BUF_SIZE)
-                	writeIndex_=0;
-                
-                //std::cout<< std::hex <<stdCanMsg.ID<<std::endl;;
-                break;
+			
+			//if(0==(data_buffer_[12] >>5)) break;                           //data[1] esr_radar object status
+																		//just used in esr_radar to filter invalid objects
+			canMsg_.type = data_buffer_[5];
+			canMsg_.ID = (data_buffer_[6]<<24)+(data_buffer_[7]<<16)+(data_buffer_[8]<<8)+(data_buffer_[9]);
+			canMsg_.len = data_buffer_[10];
+			
+			//for(size_t i=0;i<canMsg_.len;i++)
+			//	canMsg_.data[i] = data_buffer_[11+i];
+			
+			memcpy(canMsg_.data,data_buffer_+11,canMsg_.len);
+			{	
+				boost::mutex::scoped_lock lock(wr_mutex_);
+				canMsgBuf_[writeIndex_] = canMsg_;
+				canMsgStatus[writeIndex_] = true;
+			}
+			writeIndex_++;
+			if(writeIndex_==MAX_MSG_BUF_SIZE)
+				writeIndex_=0;
+			
+			//std::cout<< std::hex <<stdCanMsg.ID<<std::endl;;
+			break;
 		
 		case FilterClearResponseCmd:
 			filterClearStatus_ = !data_buffer_[5];
@@ -265,11 +262,8 @@ void Can2serial::parse(uint8_t * message,uint16_t length)
 			
 		//case FilterInquireResponseCmd;
 			
-		
 		default:
 			break;
-
-		
 	}
 }
 
@@ -289,7 +283,8 @@ uint8_t Can2serial::generateCheckNum(const uint8_t* ptr,size_t len)
 
 bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 {
-	if(serial_is_bad_)
+	//串口错误/未分配内存/内存别外部删除，直接返回
+	if(serial_is_bad_ || serial_port_ == NULL)
 		return false;
 		
 	uint16_t bufLen = 12 + can_msg.len;
@@ -323,9 +318,14 @@ bool Can2serial::sendCanMsg(const CanMsg_t &can_msg)
 	try
 	{
 		boost::mutex::scoped_lock lock(send_mutex_);
-		serial_port_->write(sendBuf,bufLen);
+		if(serial_port_) //防止指内存被外部释放而导致错误
+			serial_port_->write(sendBuf,bufLen);
+		else
+		{
+			delete [] sendBuf;
+			return false;
+		}
 	}
-    	
 	catch (std::exception &e) 
 	{
 		std::stringstream output;
@@ -353,8 +353,8 @@ void Can2serial::sendCmd(uint8_t cmdId,const uint8_t *buf,uint8_t count)
     sendBuf[4] = cmdId;
     memcpy(&sendBuf[5],buf,count);
     sendBuf[send_pkg_len+3] = generateCheckNum(sendBuf,send_pkg_len+4);
-
-    serial_port_->write(sendBuf,send_pkg_len+4);
+	if(serial_port_)
+    	serial_port_->write(sendBuf,send_pkg_len+4);
     
     /*
     for(int i =0;i<send_pkg_len+4;i++)
