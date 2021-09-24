@@ -31,7 +31,7 @@ typedef struct CanMsg
 		len = 8;
 		type = 0x03; //stdFrame
 	}
-	uint16_t ID;
+    uint32_t ID;
 	uint8_t len;
 	uint8_t data[8];
 	uint8_t type; 
