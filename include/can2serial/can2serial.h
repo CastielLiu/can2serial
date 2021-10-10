@@ -31,6 +31,10 @@ typedef struct CanMsg
 		len = 8;
 		type = 0x03; //stdFrame
 	}
+	void resetData()
+	{
+		memset(data, 0, len);
+	}
     uint32_t ID;
 	uint8_t len;
 	uint8_t data[8];
